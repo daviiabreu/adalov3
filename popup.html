@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>adalov3</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+
+<body>
+  <main class="app">
+    <h1 class="app-title">Adalov3</h1>
+    <button id="captureActionBtn" class="capture-cta" type="button">
+      <span id="captureActionText">Capturar dados - voce sera direcionado para a Adalove</span>
+      <span id="captureActionIcon" class="capture-cta-icon" aria-hidden="true" hidden>&#8635;</span>
+    </button>
+
+    <section class="section">
+      <h2>Autoestudos</h2>
+      <div class="info-list">
+        <p><span>atividades capturadas</span><strong id="rowCountValue">0</strong></p>
+        <p><span>urls unicas</span><strong id="urlsCountValue">0</strong></p>
+      </div>
+      <div class="actions">
+        <button id="downloadBtn" type="button" disabled>Baixar planilha CSV</button>
+        <button id="copyNotebookLmBtn" class="secondary" type="button" disabled>Copiar URLs</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Presenca</h2>
+      <p id="attendanceLine1" class="attendance-main"></p>
+      <p id="attendanceLine2" class="attendance-sub"></p>
+      <p id="attendanceLine3" class="attendance-sub"></p>
+      <div class="info-list compact">
+        <p><span>faltas atuais</span><strong id="absencesValue">-</strong></p>
+        <p><span>limite de faltas</span><strong id="maxAbsencesValue">-</strong></p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Notas</h2>
+      <button id="downloadGradesBtn" type="button">Baixar planilha de notas</button>
+    </section>
+
+    <div class="credit">
+      <p class="credit-meta">ultima captura: <strong id="meta">-</strong></p>
+      <p class="credit-owner">
+        made by
+        <a href="https://www.linkedin.com/in/davi-abreu-da-silveira/" target="_blank" rel="noopener noreferrer">Davi</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>

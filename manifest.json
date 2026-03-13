@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "adalov3",
+  "version": "1.0.1",
+  "description": "Adalove melhorada",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["storage", "downloads", "clipboardWrite", "tabs"],
+  "host_permissions": [
+    "https://adalove.inteli.edu.br/*",
+    "https://apiv2.inteli.edu.br/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://adalove.inteli.edu.br/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-hook.js"],
+      "matches": ["https://adalove.inteli.edu.br/*"]
+    }
+  ],
+  "action": {
+    "default_title": "adalov3",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}
