@@ -41,7 +41,33 @@
 
     <section class="section">
       <h2>Notas</h2>
-      <button id="downloadGradesBtn" type="button">Baixar planilha de notas</button>
+      <div id="gradesSummaryBlock" class="grades-summary" hidden>
+        <div class="info-list">
+          <p><span>media atual (notas lancadas)</span><strong id="currentGradeValue">-</strong></p>
+          <p><span>media geral (peso total)</span><strong id="generalGradeValue">-</strong></p>
+        </div>
+      </div>
+      <div id="gradesTableBlock" hidden>
+        <table class="grades-table">
+          <thead>
+            <tr>
+              <th class="col-name">Atividade</th>
+              <th class="col-prof">Professor</th>
+              <th class="col-weight">Peso</th>
+              <th class="col-grade">Nota</th>
+            </tr>
+          </thead>
+          <tbody id="gradesTableBody"></tbody>
+        </table>
+        <div class="sim-summary">
+          <p><span>media simulada (lancadas)</span><strong id="simCurrentGrade">-</strong></p>
+          <p><span>media simulada (geral)</span><strong id="simGeneralGrade">-</strong></p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="toggleGradesBtn" type="button" class="secondary" disabled>Simular notas</button>
+        <button id="downloadGradesBtn" type="button">Baixar planilha de notas</button>
+      </div>
     </section>
 
     <div class="credit">

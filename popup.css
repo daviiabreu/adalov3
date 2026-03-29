@@ -218,3 +218,104 @@ button:disabled {
   box-shadow: none;
   cursor: not-allowed;
 }
+
+.grades-summary {
+  margin-bottom: 8px;
+}
+
+.grades-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.grades-table th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 4px 4px 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.grades-table td {
+  padding: 4px;
+  border-bottom: 1px dotted #d2cec3;
+  vertical-align: middle;
+}
+
+.grades-table .col-name {
+  width: 38%;
+}
+
+.grades-table .col-prof {
+  width: 28%;
+}
+
+.grades-table .col-weight,
+.grades-table .col-grade {
+  width: 17%;
+  text-align: right;
+}
+
+.grades-table td:nth-child(3),
+.grades-table td:nth-child(4) {
+  text-align: right;
+  font-family: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
+  font-size: 11px;
+}
+
+.grades-table .grade-input {
+  width: 52px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 3px 4px;
+  font-size: 11px;
+  font-family: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
+  text-align: right;
+  background: #fff;
+  color: var(--text);
+}
+
+.grades-table .grade-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.grades-table .grade-input.simulated {
+  background: #eef3ff;
+  border-color: #8eaad6;
+}
+
+.sim-summary {
+  display: grid;
+  gap: 0;
+  margin-bottom: 8px;
+}
+
+.sim-summary p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  padding: 5px 0;
+}
+
+.sim-summary p + p {
+  border-top: 1px dotted #d2cec3;
+}
+
+.sim-summary span {
+  color: var(--muted);
+}
+
+.sim-summary strong {
+  color: var(--text);
+  font-weight: 650;
+  font-family: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
+}

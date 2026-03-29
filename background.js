@@ -10,6 +10,7 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({
     latestRows: [],
     latestGradeRows: [],
+    gradesSummary: null,
     rowCount: 0,
     allCapturedUrls: [],
     attendanceSummary: null,
@@ -53,6 +54,7 @@ async function processPayload(message) {
   await chrome.storage.local.set({
     latestRows: rows,
     latestGradeRows: gradesData.rows,
+    gradesSummary: gradesData.summary,
     rowCount: rows.length,
     allCapturedUrls: mergedUrls,
     attendanceSummary,
@@ -603,14 +605,13 @@ async function exportRowsToCsv(rows, capturedAt) {
   }
 
   const csv = lines.join("\r\n");
-  const filename = `adalov3/activities-${toFileTimestamp(capturedAt)}.csv`;
+  const filename = `activities-${toFileTimestamp(capturedAt)}.csv`;
   const dataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
 
   await chrome.downloads.download({
     url: dataUrl,
     filename,
-    saveAs: false,
-    conflictAction: "uniquify",
+    saveAs: true,
   });
 }
 
@@ -645,14 +646,13 @@ async function exportGradeRowsToCsv(rows, capturedAt) {
   }
 
   const csv = lines.join("\r\n");
-  const filename = `adalov3/grades-${toFileTimestamp(capturedAt)}.csv`;
+  const filename = `grades-${toFileTimestamp(capturedAt)}.csv`;
   const dataUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
 
   await chrome.downloads.download({
     url: dataUrl,
     filename,
-    saveAs: false,
-    conflictAction: "uniquify",
+    saveAs: true,
   });
 }
 

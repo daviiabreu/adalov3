@@ -13,9 +13,20 @@ var metaEl = document.getElementById("meta");
 var downloadButton = document.getElementById("downloadBtn");
 var copyNotebookLmButton = document.getElementById("copyNotebookLmBtn");
 var downloadGradesButton = document.getElementById("downloadGradesBtn");
+var toggleGradesButton = document.getElementById("toggleGradesBtn");
+var gradesSummaryBlock = document.getElementById("gradesSummaryBlock");
+var gradesTableBlock = document.getElementById("gradesTableBlock");
+var gradesTableBody = document.getElementById("gradesTableBody");
+var currentGradeValueEl = document.getElementById("currentGradeValue");
+var generalGradeValueEl = document.getElementById("generalGradeValue");
+var simCurrentGradeEl = document.getElementById("simCurrentGrade");
+var simGeneralGradeEl = document.getElementById("simGeneralGrade");
 var captureActionButton = document.getElementById("captureActionBtn");
 var captureActionTextEl = document.getElementById("captureActionText");
 var captureActionIconEl = document.getElementById("captureActionIcon");
+
+var gradesTableVisible = false;
+var cachedGradeRows = [];
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -27,11 +38,7 @@ function isValidDate(value) {
 }
 
 function hasCapturedData(state, rowCount, gradeRows) {
-  return (
-    rowCount > 0 ||
-    gradeRows.length > 0 ||
-    isValidDate(state.capturedAt)
-  );
+  return rowCount > 0 || gradeRows.length > 0 || isValidDate(state.capturedAt);
 }
 
 function setCaptureAction(hasData) {
@@ -132,6 +139,7 @@ function loadState() {
     [
       "latestRows",
       "latestGradeRows",
+      "gradesSummary",
       "rowCount",
       "attendanceSummary",
       "capturedAt",
@@ -141,7 +149,9 @@ function loadState() {
       var rows = asArray(state.latestRows);
       var gradeRows = asArray(state.latestGradeRows);
       var allCapturedUrls = asArray(state.allCapturedUrls);
-      var rowCount = Number.isFinite(state.rowCount) ? state.rowCount : rows.length;
+      var rowCount = Number.isFinite(state.rowCount)
+        ? state.rowCount
+        : rows.length;
       var attendanceSummary =
         state.attendanceSummary && typeof state.attendanceSummary === "object"
           ? state.attendanceSummary
@@ -151,6 +161,9 @@ function loadState() {
       downloadButton.disabled = rowCount <= 0;
       copyNotebookLmButton.disabled = allCapturedUrls.length === 0;
       downloadGradesButton.disabled = gradeRows.length === 0;
+      toggleGradesButton.disabled = gradeRows.length === 0;
+
+      cachedGradeRows = gradeRows;
 
       rowCountValueEl.textContent = String(rowCount);
       urlsCountValueEl.textContent = String(allCapturedUrls.length);
@@ -158,6 +171,11 @@ function loadState() {
       setCaptureAction(capturedData);
       setCapturedAt(state.capturedAt);
       setAttendance(attendanceSummary);
+      setGradesSummary(state.gradesSummary);
+
+      if (gradesTableVisible && gradeRows.length > 0) {
+        renderGradesTable(gradeRows);
+      }
     }
   );
 }
@@ -173,12 +191,16 @@ function setCapturedAt(value) {
 function setAttendance(attendanceSummary) {
   var attendanceLines = buildAttendanceLines(attendanceSummary);
   var absences = Number(attendanceSummary ? attendanceSummary.absences : NaN);
-  var maxAbsences = Number(attendanceSummary ? attendanceSummary.maxAbsences : NaN);
+  var maxAbsences = Number(
+    attendanceSummary ? attendanceSummary.maxAbsences : NaN
+  );
 
   attendanceLine1El.textContent = attendanceLines.line1;
   attendanceLine2El.textContent = attendanceLines.line2;
   attendanceLine3El.textContent = attendanceLines.line3;
-  absencesValueEl.textContent = Number.isFinite(absences) ? String(absences) : "-";
+  absencesValueEl.textContent = Number.isFinite(absences)
+    ? String(absences)
+    : "-";
   maxAbsencesValueEl.textContent = Number.isFinite(maxAbsences)
     ? String(maxAbsences)
     : "-";
@@ -257,9 +279,139 @@ function legacyCopyText(value) {
   }
 }
 
+function handleToggleGradesClick() {
+  gradesTableVisible = !gradesTableVisible;
+  gradesTableBlock.hidden = !gradesTableVisible;
+  toggleGradesButton.textContent = gradesTableVisible
+    ? "Fechar simulador"
+    : "Simular notas";
+
+  if (gradesTableVisible && cachedGradeRows.length > 0) {
+    renderGradesTable(cachedGradeRows);
+  }
+}
+
+function clearChildren(element) {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+function renderGradesTable(rows) {
+  clearChildren(gradesTableBody);
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var tr = document.createElement("tr");
+
+    var tdName = document.createElement("td");
+    tdName.textContent = row.activityName || row.folderCaption || "-";
+    tdName.title =
+      (row.activityName || "") +
+      (row.folderCaption ? " (" + row.folderCaption + ")" : "");
+
+    var tdProf = document.createElement("td");
+    tdProf.textContent = row.professorName || "-";
+
+    var tdWeight = document.createElement("td");
+    tdWeight.textContent = row.gradeWeight;
+
+    var tdGrade = document.createElement("td");
+    var input = document.createElement("input");
+    input.type = "number";
+    input.className = "grade-input";
+    input.min = "0";
+    input.max = "10";
+    input.step = "0.1";
+    input.dataset.index = String(i);
+    input.dataset.original = row.gradeResult || "";
+
+    var numericResult = parseFloat(row.gradeResult);
+    if (isFinite(numericResult) && numericResult >= 0) {
+      input.value = numericResult.toFixed(1);
+    } else {
+      input.placeholder = "-";
+    }
+
+    input.addEventListener("input", handleGradeInputChange);
+    tdGrade.appendChild(input);
+
+    tr.appendChild(tdName);
+    tr.appendChild(tdProf);
+    tr.appendChild(tdWeight);
+    tr.appendChild(tdGrade);
+    gradesTableBody.appendChild(tr);
+  }
+
+  recalculateSimulation();
+}
+
+function handleGradeInputChange(event) {
+  var input = event.target;
+  var original = input.dataset.original || "";
+  var originalNum = parseFloat(original);
+  var currentNum = parseFloat(input.value);
+
+  var isSimulated =
+    input.value !== "" &&
+    (!isFinite(originalNum) ||
+      originalNum < 0 ||
+      Math.abs(currentNum - originalNum) > 0.01);
+  input.classList.toggle("simulated", isSimulated);
+
+  recalculateSimulation();
+}
+
+function recalculateSimulation() {
+  var inputs = gradesTableBody.querySelectorAll(".grade-input");
+  var totalWeight = 0;
+  var gradedWeight = 0;
+  var weightedScore = 0;
+
+  for (var i = 0; i < inputs.length; i++) {
+    var input = inputs[i];
+    var idx = parseInt(input.dataset.index, 10);
+    var weight = parseFloat(cachedGradeRows[idx].gradeWeight) || 0;
+    totalWeight += weight;
+
+    var value = parseFloat(input.value);
+    if (isFinite(value) && value >= 0) {
+      gradedWeight += weight;
+      weightedScore += value * weight;
+    }
+  }
+
+  var simCurrent = gradedWeight > 0 ? weightedScore / gradedWeight : 0;
+  var simGeneral = totalWeight > 0 ? weightedScore / totalWeight : 0;
+
+  simCurrentGradeEl.textContent = simCurrent.toFixed(2);
+  simGeneralGradeEl.textContent = simGeneral.toFixed(2);
+}
+
+function setGradesSummary(summary) {
+  if (!summary || typeof summary !== "object") {
+    gradesSummaryBlock.hidden = true;
+    currentGradeValueEl.textContent = "-";
+    generalGradeValueEl.textContent = "-";
+    return;
+  }
+
+  var current = Number(summary.currentGrade);
+  var general = Number(summary.generalGrade);
+
+  currentGradeValueEl.textContent = isFinite(current)
+    ? current.toFixed(2)
+    : "-";
+  generalGradeValueEl.textContent = isFinite(general)
+    ? general.toFixed(2)
+    : "-";
+  gradesSummaryBlock.hidden = false;
+}
+
 downloadButton.addEventListener("click", handleDownloadRowsClick);
 copyNotebookLmButton.addEventListener("click", handleCopyUrlsClick);
 downloadGradesButton.addEventListener("click", handleDownloadGradesClick);
+toggleGradesButton.addEventListener("click", handleToggleGradesClick);
 captureActionButton.addEventListener("click", handleCaptureActionClick);
 
 loadState();
