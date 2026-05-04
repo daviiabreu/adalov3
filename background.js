@@ -1,4 +1,22 @@
 const IGNORE_ACTIVITY_URL = "https://www.inteli.edu.br/";
+const ACTIVITY_TYPE_LABELS = {
+  1: "Aula",
+  2: "Aula",
+  11: "Ponderada",
+  21: "Artefato",
+  31: "Avaliação",
+};
+
+function classifyActivityType(activity) {
+  if (Number(activity.exam) === 1) {
+    return "Prova";
+  }
+  if (Number(activity.makeup_exam) === 1) {
+    return "Prova Sub";
+  }
+  return ACTIVITY_TYPE_LABELS[Number(activity.type)] || "Outro";
+}
+
 let volatileLastSignature = "";
 const MESSAGE_HANDLERS = {
   ADALOV3_PROCESS_PAYLOAD: processPayload,
@@ -210,6 +228,7 @@ function extractGradesData(payload) {
       activityName: toStringSafe(activity.caption).trim(),
       folderCaption: toStringSafe(activity.folderCaption).trim(),
       professorName: toStringSafe(activity.professorName).trim(),
+      activityType: classifyActivityType(activity),
       gradeWeight,
       gradeResult: toStringSafe(activity.gradeResult).trim(),
       numericGradeResult,
@@ -225,6 +244,7 @@ function extractGradesData(payload) {
     activityName: row.activityName,
     folderCaption: row.folderCaption,
     professorName: row.professorName,
+    activityType: row.activityType,
     gradeWeight: row.gradeWeight,
     gradeResult: row.gradeResult,
   }));
@@ -504,6 +524,7 @@ function buildSignature(rows, attendanceSummary, gradesData) {
             row.activityName,
             row.folderCaption,
             row.professorName,
+            row.activityType,
             row.gradeWeight,
             row.gradeResult,
           ].join("|")
@@ -621,6 +642,7 @@ async function exportGradeRowsToCsv(rows, capturedAt) {
     "activityName",
     "folderCaption",
     "professorName",
+    "activityType",
     "gradeWeight",
     "gradeResult",
     "currentGrade",
@@ -635,6 +657,7 @@ async function exportGradeRowsToCsv(rows, capturedAt) {
         row.activityName,
         row.folderCaption,
         row.professorName,
+        row.activityType || "",
         row.gradeWeight,
         formatGradeResultForSheet(row.gradeResult),
         formulas.currentGrade,
@@ -659,8 +682,8 @@ async function exportGradeRowsToCsv(rows, capturedAt) {
 function buildGradeSheetFormulas(rowCount) {
   const firstDataRow = 2;
   const lastDataRow = Math.max(firstDataRow, rowCount + 1);
-  const weightRange = `$D$${firstDataRow}:$D$${lastDataRow}`;
-  const resultRange = `$E$${firstDataRow}:$E$${lastDataRow}`;
+  const weightRange = `$E$${firstDataRow}:$E$${lastDataRow}`;
+  const resultRange = `$F$${firstDataRow}:$F$${lastDataRow}`;
   const completedMask = `--(${resultRange}>=0)`;
   const weightedCompleted = `SUMPRODUCT(${weightRange};${completedMask};${resultRange})`;
   const completedWeight = `SUMPRODUCT(${weightRange};${completedMask})`;

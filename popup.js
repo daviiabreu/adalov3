@@ -25,8 +25,53 @@ var captureActionButton = document.getElementById("captureActionBtn");
 var captureActionTextEl = document.getElementById("captureActionText");
 var captureActionIconEl = document.getElementById("captureActionIcon");
 
+var progressBlockEl = document.getElementById("progressBlock");
+var progressBarFillEl = document.getElementById("progressBarFill");
+var progressTextEl = document.getElementById("progressText");
+var categoryBreakdownEl = document.getElementById("categoryBreakdown");
+var categoryListEl = document.getElementById("categoryList");
+var examProjectionEl = document.getElementById("examProjection");
+var targetGradeSliderEl = document.getElementById("targetGradeSlider");
+var targetGradeDisplayEl = document.getElementById("targetGradeDisplay");
+var projectionResultEl = document.getElementById("projectionResult");
+var participationBlockEl = document.getElementById("participationBlock");
+var participationRowEl = document.getElementById("participationRow");
+var applyProjectionToggleEl = document.getElementById("applyProjectionToggle");
+var applyProjectionCheckEl = document.getElementById("applyProjectionCheck");
+
+var PARTICIPATION_MULTIPLIERS = [
+  { letter: "+5%", multiplier: 1.05 },
+  { letter: "0%", multiplier: 1.00 },
+  { letter: "-5%", multiplier: 0.95 },
+  { letter: "-10%", multiplier: 0.90 },
+  { letter: "-15%", multiplier: 0.85 },
+];
+
 var gradesTableVisible = false;
 var cachedGradeRows = [];
+var cachedGradesSummary = null;
+
+// ---- Tab switching ----
+
+var tabButtons = document.querySelectorAll(".tab");
+var tabContents = document.querySelectorAll(".tab-content");
+
+for (var t = 0; t < tabButtons.length; t++) {
+  tabButtons[t].addEventListener("click", handleTabClick);
+}
+
+function handleTabClick(event) {
+  var targetTab = event.currentTarget.dataset.tab;
+
+  for (var i = 0; i < tabButtons.length; i++) {
+    tabButtons[i].classList.toggle("active", tabButtons[i].dataset.tab === targetTab);
+  }
+  for (var j = 0; j < tabContents.length; j++) {
+    tabContents[j].classList.toggle("active", tabContents[j].id === "tab-" + targetTab);
+  }
+}
+
+// ---- Utilities ----
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -45,7 +90,7 @@ function setCaptureAction(hasData) {
   captureActionButton.dataset.captureState = hasData ? "update" : "capture";
   captureActionTextEl.textContent = hasData
     ? "Atualizar"
-    : "Capturar dados - voce sera direcionado para a Adalove";
+    : "Capturar dados - você será direcionado para a Adalove";
   captureActionIconEl.hidden = !hasData;
 }
 
@@ -92,6 +137,8 @@ function openAcademicLifeForActiveTab() {
   });
 }
 
+// ---- Handlers ----
+
 function handleDownloadRowsClick() {
   downloadButton.disabled = true;
 
@@ -134,6 +181,8 @@ function handleCaptureActionClick() {
   openAcademicLifeForActiveTab();
 }
 
+// ---- State loading ----
+
 function loadState() {
   chrome.storage.local.get(
     [
@@ -164,6 +213,7 @@ function loadState() {
       toggleGradesButton.disabled = gradeRows.length === 0;
 
       cachedGradeRows = gradeRows;
+      cachedGradesSummary = state.gradesSummary || null;
 
       rowCountValueEl.textContent = String(rowCount);
       urlsCountValueEl.textContent = String(allCapturedUrls.length);
@@ -172,6 +222,10 @@ function loadState() {
       setCapturedAt(state.capturedAt);
       setAttendance(attendanceSummary);
       setGradesSummary(state.gradesSummary);
+      setProgressIndicator(state.gradesSummary);
+      setCategoryBreakdown(gradeRows);
+      setExamProjection(gradeRows, state.gradesSummary);
+      setParticipation(state.gradesSummary);
 
       if (gradesTableVisible && gradeRows.length > 0) {
         renderGradesTable(gradeRows);
@@ -179,6 +233,8 @@ function loadState() {
     }
   );
 }
+
+// ---- Attendance ----
 
 function setCapturedAt(value) {
   var capturedAt = value ? new Date(value) : null;
@@ -243,6 +299,8 @@ function buildAttendanceLines(attendanceSummary) {
   };
 }
 
+// ---- Clipboard ----
+
 function copyText(value) {
   if (
     navigator.clipboard &&
@@ -279,6 +337,296 @@ function legacyCopyText(value) {
   }
 }
 
+// ---- Grades Summary ----
+
+function setGradesSummary(summary) {
+  if (!summary || typeof summary !== "object") {
+    gradesSummaryBlock.hidden = true;
+    currentGradeValueEl.textContent = "-";
+    generalGradeValueEl.textContent = "-";
+    return;
+  }
+
+  var current = Number(summary.currentGrade);
+  var general = Number(summary.generalGrade);
+
+  currentGradeValueEl.textContent = isFinite(current)
+    ? current.toFixed(2)
+    : "-";
+  generalGradeValueEl.textContent = isFinite(general)
+    ? general.toFixed(2)
+    : "-";
+  gradesSummaryBlock.hidden = false;
+}
+
+// ---- Progress Indicator ----
+
+function setProgressIndicator(summary) {
+  if (!summary || typeof summary !== "object") {
+    progressBlockEl.hidden = true;
+    return;
+  }
+
+  var graded = Number(summary.gradedWeight);
+  var total = Number(summary.totalWeight);
+
+  if (!isFinite(total) || total <= 0) {
+    progressBlockEl.hidden = true;
+    return;
+  }
+
+  var percentage = isFinite(graded) ? (graded / total) * 100 : 0;
+  var clamped = Math.min(100, Math.max(0, percentage));
+
+  progressBarFillEl.style.width = clamped.toFixed(1) + "%";
+  progressTextEl.textContent =
+    (isFinite(graded) ? graded : 0) +
+    " / " +
+    total +
+    " avaliado (" +
+    Math.round(clamped) +
+    "%)";
+  progressBlockEl.hidden = false;
+}
+
+// ---- Category Breakdown ----
+
+function setCategoryBreakdown(gradeRows) {
+  if (!gradeRows || gradeRows.length === 0) {
+    categoryBreakdownEl.hidden = true;
+    return;
+  }
+
+  var groups = {};
+  for (var i = 0; i < gradeRows.length; i++) {
+    var row = gradeRows[i];
+    var type = row.activityType || "Outro";
+    if (!groups[type]) {
+      groups[type] = { totalWeight: 0, weightedScore: 0, gradedWeight: 0 };
+    }
+    var weight = parseFloat(row.gradeWeight) || 0;
+    groups[type].totalWeight += weight;
+
+    var grade = parseFloat(row.gradeResult);
+    if (isFinite(grade) && grade >= 0) {
+      groups[type].weightedScore += grade * weight;
+      groups[type].gradedWeight += weight;
+    }
+  }
+
+  var types = Object.keys(groups);
+  if (types.length === 0) {
+    categoryBreakdownEl.hidden = true;
+    return;
+  }
+
+  clearChildren(categoryListEl);
+
+  for (var j = 0; j < types.length; j++) {
+    var typeName = types[j];
+    var group = groups[typeName];
+    var avg = group.gradedWeight > 0 ? group.weightedScore / group.gradedWeight : 0;
+    var barPercent = Math.min(100, (avg / 10) * 100);
+
+    var item = document.createElement("div");
+    item.className = "category-item";
+
+    var label = document.createElement("span");
+    label.className = "category-label";
+    label.textContent = typeName;
+
+    var barTrack = document.createElement("div");
+    barTrack.className = "category-bar-track";
+    var barFill = document.createElement("div");
+    barFill.className = "category-bar-fill " + categoryTypeClass(typeName);
+    barFill.style.width = barPercent.toFixed(1) + "%";
+    barTrack.appendChild(barFill);
+
+    var value = document.createElement("span");
+    value.className = "category-value";
+    value.textContent = group.gradedWeight > 0 ? avg.toFixed(1) : "-";
+
+    item.appendChild(label);
+    item.appendChild(barTrack);
+    item.appendChild(value);
+    categoryListEl.appendChild(item);
+  }
+
+  categoryBreakdownEl.hidden = false;
+}
+
+function categoryTypeClass(typeName) {
+  var normalized = typeName.toLowerCase()
+    .replace(/\s+/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (normalized === "ponderada") return "type-ponderada";
+  if (normalized === "artefato") return "type-artefato";
+  if (normalized === "prova" || normalized === "provasub") return "type-prova";
+  if (normalized === "avaliacao") return "type-avaliacao";
+  return "type-outro";
+}
+
+// ---- Exam Projection ----
+
+var cachedProjectionState = null;
+
+function setExamProjection(gradeRows, summary) {
+  cachedProjectionState = null;
+
+  if (!gradeRows || gradeRows.length === 0 || !summary) {
+    examProjectionEl.hidden = true;
+    applyProjectionToggleEl.hidden = true;
+    return;
+  }
+
+  var currentAvg = Number(summary.currentGrade) || 0;
+  var totalWeight = Number(summary.totalWeight) || 0;
+  var examWeight = 0;
+  var examGraded = true;
+  var accumulatedNonExam = 0;
+
+  for (var i = 0; i < gradeRows.length; i++) {
+    var row = gradeRows[i];
+    var type = (row.activityType || "").toLowerCase();
+    var weight = parseFloat(row.gradeWeight) || 0;
+    var grade = parseFloat(row.gradeResult);
+    var isExam = type === "prova" || type === "prova sub";
+    var isGraded = isFinite(grade) && grade >= 0;
+
+    if (isExam) {
+      examWeight += weight;
+      if (!isGraded) examGraded = false;
+    } else {
+      var effectiveGrade = isGraded ? grade : currentAvg;
+      accumulatedNonExam += effectiveGrade * weight;
+    }
+  }
+
+  if (examWeight <= 0 || examGraded) {
+    examProjectionEl.hidden = true;
+    applyProjectionToggleEl.hidden = true;
+    return;
+  }
+
+  cachedProjectionState = {
+    totalWeight: totalWeight,
+    accumulatedNonExam: accumulatedNonExam,
+    examWeight: examWeight,
+  };
+
+  examProjectionEl.hidden = false;
+  applyProjectionToggleEl.hidden = false;
+  renderProjection();
+}
+
+function renderProjection() {
+  if (!cachedProjectionState) return;
+
+  var s = cachedProjectionState;
+  var target = parseFloat(targetGradeSliderEl.value) || 0;
+  targetGradeDisplayEl.textContent = target.toFixed(1);
+
+  var rawRequired = (target * s.totalWeight - s.accumulatedNonExam) / s.examWeight;
+  var required = Math.max(0, Math.min(10, rawRequired));
+
+  var statusClass;
+  if (rawRequired <= 0) {
+    statusClass = "status-comfortable";
+  } else if (rawRequired <= 7) {
+    statusClass = "status-comfortable";
+  } else if (rawRequired <= 10) {
+    statusClass = "status-challenging";
+  } else {
+    statusClass = "status-impossible";
+  }
+
+  clearChildren(projectionResultEl);
+  projectionResultEl.className = "projection-result " + statusClass;
+
+  var valueSpan = document.createElement("span");
+  valueSpan.className = "result-value";
+  valueSpan.textContent = required.toFixed(1);
+  projectionResultEl.appendChild(valueSpan);
+
+  updateParticipationFromProjection();
+}
+
+function getProjectedGeneralGrade() {
+  if (!cachedProjectionState) return null;
+  var s = cachedProjectionState;
+  var target = parseFloat(targetGradeSliderEl.value) || 0;
+  var rawRequired = (target * s.totalWeight - s.accumulatedNonExam) / s.examWeight;
+  var examScore = Math.max(0, Math.min(10, rawRequired));
+  return (s.accumulatedNonExam + examScore * s.examWeight) / s.totalWeight;
+}
+
+// ---- Participation ----
+
+function setParticipation(summary) {
+  if (!summary || typeof summary !== "object") {
+    participationBlockEl.hidden = true;
+    return;
+  }
+
+  var general = Number(summary.generalGrade);
+  if (!isFinite(general)) {
+    participationBlockEl.hidden = true;
+    return;
+  }
+
+  renderParticipation(general);
+  participationBlockEl.hidden = false;
+}
+
+function updateParticipationFromProjection() {
+  if (!applyProjectionCheckEl.checked) return;
+  var projected = getProjectedGeneralGrade();
+  if (projected !== null && isFinite(projected)) {
+    renderParticipation(projected);
+  }
+}
+
+function renderParticipation(baseGrade) {
+  clearChildren(participationRowEl);
+
+  for (var i = 0; i < PARTICIPATION_MULTIPLIERS.length; i++) {
+    var entry = PARTICIPATION_MULTIPLIERS[i];
+    var adjusted = baseGrade * entry.multiplier;
+    var diff = adjusted - baseGrade;
+
+    var item = document.createElement("div");
+    item.className = "participation-item";
+
+    var letter = document.createElement("span");
+    letter.className = "participation-letter";
+    letter.textContent = entry.letter;
+
+    var value = document.createElement("span");
+    var diffText;
+    var valueClass;
+    if (Math.abs(diff) < 0.005) {
+      diffText = adjusted.toFixed(2);
+      valueClass = "neutral";
+    } else if (diff > 0) {
+      diffText = adjusted.toFixed(2) + " (+" + diff.toFixed(2) + ")";
+      valueClass = "positive";
+    } else {
+      diffText = adjusted.toFixed(2) + " (" + diff.toFixed(2) + ")";
+      valueClass = "negative";
+    }
+    value.className = "participation-value " + valueClass;
+    value.textContent = diffText;
+
+    item.appendChild(letter);
+    item.appendChild(value);
+    participationRowEl.appendChild(item);
+  }
+}
+
+// ---- Grades Table & Simulation ----
+
 function handleToggleGradesClick() {
   gradesTableVisible = !gradesTableVisible;
   gradesTableBlock.hidden = !gradesTableVisible;
@@ -310,6 +658,10 @@ function renderGradesTable(rows) {
       (row.activityName || "") +
       (row.folderCaption ? " (" + row.folderCaption + ")" : "");
 
+    var tdType = document.createElement("td");
+    tdType.textContent = row.activityType || "-";
+    tdType.className = "col-type-cell";
+
     var tdProf = document.createElement("td");
     tdProf.textContent = row.professorName || "-";
 
@@ -337,6 +689,7 @@ function renderGradesTable(rows) {
     tdGrade.appendChild(input);
 
     tr.appendChild(tdName);
+    tr.appendChild(tdType);
     tr.appendChild(tdProf);
     tr.appendChild(tdWeight);
     tr.appendChild(tdGrade);
@@ -388,30 +741,26 @@ function recalculateSimulation() {
   simGeneralGradeEl.textContent = simGeneral.toFixed(2);
 }
 
-function setGradesSummary(summary) {
-  if (!summary || typeof summary !== "object") {
-    gradesSummaryBlock.hidden = true;
-    currentGradeValueEl.textContent = "-";
-    generalGradeValueEl.textContent = "-";
-    return;
-  }
-
-  var current = Number(summary.currentGrade);
-  var general = Number(summary.generalGrade);
-
-  currentGradeValueEl.textContent = isFinite(current)
-    ? current.toFixed(2)
-    : "-";
-  generalGradeValueEl.textContent = isFinite(general)
-    ? general.toFixed(2)
-    : "-";
-  gradesSummaryBlock.hidden = false;
-}
+// ---- Event Listeners ----
 
 downloadButton.addEventListener("click", handleDownloadRowsClick);
 copyNotebookLmButton.addEventListener("click", handleCopyUrlsClick);
 downloadGradesButton.addEventListener("click", handleDownloadGradesClick);
 toggleGradesButton.addEventListener("click", handleToggleGradesClick);
 captureActionButton.addEventListener("click", handleCaptureActionClick);
+
+targetGradeSliderEl.addEventListener("input", function () {
+  renderProjection();
+});
+
+applyProjectionCheckEl.addEventListener("change", function () {
+  if (!cachedGradesSummary) return;
+  if (applyProjectionCheckEl.checked) {
+    updateParticipationFromProjection();
+  } else {
+    var general = Number(cachedGradesSummary.generalGrade);
+    if (isFinite(general)) renderParticipation(general);
+  }
+});
 
 loadState();

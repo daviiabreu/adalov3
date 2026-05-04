@@ -12,46 +12,92 @@
   <main class="app">
     <h1 class="app-title">Adalov3</h1>
     <button id="captureActionBtn" class="capture-cta" type="button">
-      <span id="captureActionText">Capturar dados - voce sera direcionado para a Adalove</span>
+      <span id="captureActionText">Capturar dados - você será direcionado para a Adalove</span>
       <span id="captureActionIcon" class="capture-cta-icon" aria-hidden="true" hidden>&#8635;</span>
     </button>
 
-    <section class="section">
-      <h2>Autoestudos</h2>
-      <div class="info-list">
-        <p><span>atividades capturadas</span><strong id="rowCountValue">0</strong></p>
-        <p><span>urls unicas</span><strong id="urlsCountValue">0</strong></p>
-      </div>
-      <div class="actions">
-        <button id="downloadBtn" type="button" disabled>Baixar planilha CSV</button>
-        <button id="copyNotebookLmBtn" class="secondary" type="button" disabled>Copiar URLs</button>
-      </div>
-    </section>
+    <div class="tabs">
+      <button class="tab active" data-tab="geral" type="button">Geral</button>
+      <button class="tab" data-tab="notas" type="button">Notas</button>
+    </div>
 
-    <section class="section">
-      <h2>Presenca</h2>
-      <p id="attendanceLine1" class="attendance-main"></p>
-      <p id="attendanceLine2" class="attendance-sub"></p>
-      <p id="attendanceLine3" class="attendance-sub"></p>
-      <div class="info-list compact">
-        <p><span>faltas atuais</span><strong id="absencesValue">-</strong></p>
-        <p><span>limite de faltas</span><strong id="maxAbsencesValue">-</strong></p>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2>Notas</h2>
-      <div id="gradesSummaryBlock" class="grades-summary" hidden>
+    <!-- Tab: Geral -->
+    <div id="tab-geral" class="tab-content active">
+      <section class="section">
+        <h2>Autoestudos</h2>
         <div class="info-list">
-          <p><span>media atual (notas lancadas)</span><strong id="currentGradeValue">-</strong></p>
-          <p><span>media geral (peso total)</span><strong id="generalGradeValue">-</strong></p>
+          <p><span>atividades capturadas</span><strong id="rowCountValue">0</strong></p>
+          <p><span>urls únicas</span><strong id="urlsCountValue">0</strong></p>
+        </div>
+        <div class="actions">
+          <button id="downloadBtn" type="button" disabled>Baixar planilha CSV</button>
+          <button id="copyNotebookLmBtn" class="secondary" type="button" disabled>Copiar URLs</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Presença</h2>
+        <p id="attendanceLine1" class="attendance-main"></p>
+        <p id="attendanceLine2" class="attendance-sub"></p>
+        <p id="attendanceLine3" class="attendance-sub"></p>
+        <div class="info-list compact">
+          <p><span>faltas atuais</span><strong id="absencesValue">-</strong></p>
+          <p><span>limite de faltas</span><strong id="maxAbsencesValue">-</strong></p>
+        </div>
+      </section>
+    </div>
+
+    <!-- Tab: Notas -->
+    <div id="tab-notas" class="tab-content">
+      <div id="gradesSummaryBlock" class="grades-summary" hidden>
+        <div class="grade-cards">
+          <div class="grade-card">
+            <span class="grade-card-value" id="currentGradeValue">-</span>
+            <span class="grade-card-label">média atual</span>
+          </div>
+          <div class="grade-card">
+            <span class="grade-card-value" id="generalGradeValue">-</span>
+            <span class="grade-card-label">média geral</span>
+          </div>
         </div>
       </div>
+
+      <div id="progressBlock" hidden>
+        <div class="progress-bar-track">
+          <div id="progressBarFill" class="progress-bar-fill"></div>
+        </div>
+        <p class="progress-label" id="progressText">-</p>
+      </div>
+
+      <div id="categoryBreakdown" class="section" hidden>
+        <h3>Desempenho por categoria</h3>
+        <div id="categoryList" class="category-list"></div>
+      </div>
+
+      <div id="examProjection" class="exam-projection" hidden>
+        <h3>Projeção de prova</h3>
+        <div class="projection-controls">
+          <label>Meta: <strong id="targetGradeDisplay">6.0</strong></label>
+          <input type="range" id="targetGradeSlider" class="projection-slider" min="0" max="10" step="0.5" value="6" />
+        </div>
+        <div id="projectionResult" class="projection-result"></div>
+        <label class="toggle-row" id="applyProjectionToggle" hidden>
+          <input type="checkbox" id="applyProjectionCheck" />
+          <span>Aplicar projeção na participação</span>
+        </label>
+      </div>
+
+      <div id="participationBlock" hidden>
+        <h3>Participação</h3>
+        <div id="participationRow" class="participation-row"></div>
+      </div>
+
       <div id="gradesTableBlock" hidden>
         <table class="grades-table">
           <thead>
             <tr>
               <th class="col-name">Atividade</th>
+              <th class="col-type">Tipo</th>
               <th class="col-prof">Professor</th>
               <th class="col-weight">Peso</th>
               <th class="col-grade">Nota</th>
@@ -60,18 +106,19 @@
           <tbody id="gradesTableBody"></tbody>
         </table>
         <div class="sim-summary">
-          <p><span>media simulada (lancadas)</span><strong id="simCurrentGrade">-</strong></p>
-          <p><span>media simulada (geral)</span><strong id="simGeneralGrade">-</strong></p>
+          <p><span>média simulada (lançadas)</span><strong id="simCurrentGrade">-</strong></p>
+          <p><span>média simulada (geral)</span><strong id="simGeneralGrade">-</strong></p>
         </div>
       </div>
+
       <div class="actions">
         <button id="toggleGradesBtn" type="button" class="secondary" disabled>Simular notas</button>
-        <button id="downloadGradesBtn" type="button">Baixar planilha de notas</button>
+        <button id="downloadGradesBtn" type="button" disabled>Baixar planilha de notas</button>
       </div>
-    </section>
+    </div>
 
     <div class="credit">
-      <p class="credit-meta">ultima captura: <strong id="meta">-</strong></p>
+      <p class="credit-meta">última captura: <strong id="meta">-</strong></p>
       <p class="credit-owner">
         made by
         <a href="https://www.linkedin.com/in/davi-abreu-da-silveira/" target="_blank" rel="noopener noreferrer">Davi</a>
